@@ -3,11 +3,13 @@
 % Reversible data hiding on JPEG images based on new coefficients selection strategy.
 
 clear
-coverJPEG = 'lena70.jpg';  BN = 1;  msgLen = floor(40000/BN);  stegoJPEG = 'fishRDH.jpg';  key = 100;  QF = 70; a = 1;
+% coverJPEG = 'lena70.jpg';  BN = 1;  msgLen = floor(40000/BN);  stegoJPEG = 'fishRDH.jpg';  key = 100;  QF = 70; a = 1;
 
 jpegOrder = [ 1 9 2 3 10 17 25 18   11 4 5 12 19 26 33 41   34 27 20 13 6 7 14 21   28 35 42 49 57 50 43 36,...
               29 22 15 8 16 23 30 37   44 51 58 59 52 45 38 31   24 32 39 46 53 60 61 54    47 40 48 55 62 63 56 64];
-InDir = 'D:\Documents\IH\RDH-JPEG EURASIP\images\';
+
+% you may need to change this path based on where the cover images are located.
+InDir = 'D:\Documents\IH\RDH-JPEG EURASIP\images\'; 
 JpgFileList=dir([InDir, '*.jpg']);
 ListLenCover = length(JpgFileList);
 
