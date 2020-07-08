@@ -1,5 +1,5 @@
 % written by FIsseha Teju
-% this is a Experiment to prove the paper idea named :
+% this is an Experimental prove to the paper named :
 % Reversible data hiding on JPEG images based on new coefficients selection strategy.
 
 clear
