@@ -1,8 +1,9 @@
 % written by FIsseha Teju
 % this is Experimental prove for the paper nameed "Reversible data hiding on JPEG images based on new coefficients selection strategy"
 
-clear
-coverJPEG = 'lena70.jpg';  BN = 1;  msgLen = floor(40000/BN);  stegoJPEG = 'fishRDH.jpg';  key = 100;  QF = 70; a = 1;
+clear all
+
+stegoJPEG = 'fishRDH.jpg';  BN = 1;
 
 jpegOrder = [ 1 9 2 3 10 17 25 18,...   
         11 4 5 12 19 26 33 41,...
@@ -22,24 +23,24 @@ result_fish_HS_filesize  = zeros(ListLenCover,50);
 org_filesize = zeros(ListLenCover,50);
 
 % for QF = 70:10:90
- for im=1:ListLenCover
+ for im = 1:ListLenCover
     coverJPEG = [InDir JpgFileList(im).name];
 
-    if QF == 70 && im == 3
-         EC = 42;
-    elseif QF == 70 && im == 4
-         EC = 25;
-    elseif QF == 70 && im == 5
-         EC = 21;
-    elseif QF == 70 && im == 6
-         EC = 29;
-    else
-         EC = 19;
-    end
+%     if QF == 70 && im == 3
+%          EC = 42;
+%     elseif QF == 70 && im == 4
+%          EC = 25;
+%     elseif QF == 70 && im == 5
+%          EC = 21;
+%     elseif QF == 70 && im == 6
+%          EC = 29;
+%     else
+%          EC = 19;
+%     end
 
     a = 1;
-    EC = 10;
-    for L = 10000:1000:EC*1000
+    EC = 8;
+    for L = 8000:8000:EC*1000
         
         jpgObj = jpeg_read(coverJPEG);                                           %read the coefficients of JPEG image
         jpgCoef = jpgObj.coef_arrays{1};
@@ -48,72 +49,110 @@ org_filesize = zeros(ListLenCover,50);
         jpgEmbCoef = jpgVecCoef(jpegOrder(1:64),:);                                % the 1:64 frequency bands are selected for embeding
         quantize_table=jpgObj.quant_tables{1};
         quantize_table_reshape=quantize_table(jpegOrder);
-        S = jpgEmbCoef(2:64,:);
+        ac_coef = jpgEmbCoef(2:64,:);
 
+        %% calculating scale factor and determine quality factor
+        % Scale factor (SF) = 5000/ QF if 1 <= QF < 50
+        % Scale factor (SF) = 200 - 2 * QF if 20 <= QF < 100
+        % else Scale factor (SF) = 1
+        
+        QF50 = [16 11 10 16 24 40 51 61;
+            12 12 14 19 26 58 60 55;
+            14 13 16 24 40 57 69 56;
+            14 17 22 29 51 87 80 62;
+            18 22 37 56 68 109 103 77;
+            24 35 55 64 81 104 113 92;
+            49 64 78 87 103 121 120 101;
+            72 92 95 98 112 100 103 99];
+
+        for k = 10:10:90
+            if k > 50
+                SF = 200 - 2 * k;
+            else
+                SF = double(uint8(5000 / k));
+            end
+            
+            Q = double(uint8(QF50 * (SF/100)));
+            if Q == quantize_table
+                QF = k;
+                break;
+            end
+        end
+        %%
+        
         msgLen = L;   %%% message size L
-        [row_1,col_1] = size(S);
-        absS = abs(S);
+        [row_1,col_1] = size(ac_coef);
+        
+%         absS = abs(ac_coef);
         
        %%  %%%%%%%%%%% block sorting    %%%%%%%%%%%%%% 
-        VG=S(1:end,:)==0;
-        for i = 1:size(VG,2)
-            VG2(:,i) = VG(:,i).* ((63:-1:1)');
-            %             VG2(:,i) = VG(:,i);
+        zero_ind = ac_coef(1:end,:) == 0;
+        zero_ind2 = zero_ind;
+        
+        for i = 1:size(zero_ind,2)
+            zero_ind2(:,i) = zero_ind(:,i).* ((63:-1:1)');
         end
-        VG2_sum=sum(VG2);
+        
+        zero_ind_sum = sum(zero_ind2);
         % tabulate(VG2_sum);
-        [~, VG_sort_ind]=sort(VG2_sum,'descend');
-        S_sorted=S(:,VG_sort_ind);
-        absS = abs(S_sorted);
+        [~, block_sorting_ind] = sort(zero_ind_sum,'descend');
+        ac_coef_block_sorted = ac_coef(:,block_sorting_ind);
+        
+%         absS = abs(ac_coef_sorted_block);
         %%
         
         %%  %%%%%%%%%%%%%%%  index ording  %%%%%%%%%%%%%%%%%
         for i=1:63
-            emb = S_sorted(i,:)==1|S_sorted(i,:)==-1;
-            shift = S_sorted(i,:)>1|S_sorted(i,:)<-1;
-            DM = sum(emb)/(sum(shift)+sum(emb)/2)/quantize_table_reshape(i+1);
-            ED_metric(i,:)=[ sum(emb) sum(shift) quantize_table_reshape(i+1) DM];
-            ED_metric_cumsum_embedding(i,:)=cumsum(emb);
-            ED_metric_cumsum_distortion(i,:)=1+quantize_table_reshape(i+1)^2*(cumsum(shift)+0.5*cumsum(emb));
-            ED_metric_cumsum_final(i,:)=ED_metric_cumsum_embedding(i,:)./ED_metric_cumsum_distortion(i,:);
+            emb = ac_coef_block_sorted(i,:) == 1 | ac_coef_block_sorted(i,:) == -1;
+            shift = ac_coef_block_sorted(i,:) > 1 | ac_coef_block_sorted(i,:) < -1;
+%             D_ratio = sum(emb)/((sum(shift) + sum(emb)/2)/quantize_table_reshape(i + 1));
+%             if ((sum(shift) + sum(emb)/2)/quantize_table_reshape(i + 1)) == 0
+%                 D_ratio = 0;
+%             end
+%             ED_metric(i,:) = [ sum(emb) sum(shift) quantize_table_reshape(i + 1) D_ratio];
+
+            ED_metric_cumsum_embedding(i,:) = cumsum(emb);
+            ED_metric_cumsum_distortion(i,:) = 1 + quantize_table_reshape(i + 1)^2*(cumsum(shift)+0.5*cumsum(emb));
+            ED_metric_cumsum_final(i,:) = ED_metric_cumsum_embedding(i,:)./ED_metric_cumsum_distortion(i,:);
         end
         
-        mean_ED_metric_cumsum_final=mean(ED_metric_cumsum_final')';
-        [sorted_mean_ED_metric_cumsum_final ind]=sortrows(mean_ED_metric_cumsum_final,-1);
-        temp_variable=[sorted_mean_ED_metric_cumsum_final ED_metric_cumsum_embedding(ind,end) quantize_table_reshape(ind+1)'  ind];
+        mean_ED_metric_cumsum_final = mean(ED_metric_cumsum_final')';
+        [sorted_mean_ED_metric_cumsum_final ind] = sortrows(mean_ED_metric_cumsum_final,-1);
+        temp_variable = [sorted_mean_ED_metric_cumsum_final ED_metric_cumsum_embedding(ind,end) quantize_table_reshape(ind+1)'  ind];
         %%
               
         %%  %%%%%%%%%%%%%% section selection and embedding %%%%%%%%%%%%%%%%%%%
         %         counter=0;
         for d = 1:63
             %                 counter=counter+1;
-            block = find(S_sorted(ind(d),:) ~= 0);
-            block2 = S_sorted(ind(d),block);
-            block3 = [block2 zeros(1, 4096 - size(block2,2))];
-            block_final(ind(d),:) = block3;
+            nonzeros_ind = find(ac_coef_block_sorted(ind(d),:) ~= 0);
+            nonzeros = ac_coef_block_sorted(ind(d),nonzeros_ind);
+            padding = [nonzeros zeros(1, 4096 - size(nonzeros,2))];
+            nonzeros_plus_padding(ind(d),:) = padding;
         end
-        block_final_save=[];
+        
+        nonzeros_padding_save = [];
         distortion_min_save=10000000000000000000000;
+        
         for d = 1:63
-            sec = sort(ind(1:d));
-            blocks_to_be_embedded_original=reshape(block_final(sec,:),1,[]);
-            blocks_to_be_embedded=reshape(block_final(sec,:),1,[]);
+            section = sort(ind(1:d));
+            blocks_to_be_embedded_original = reshape(nonzeros_plus_padding(section,:),1,[]);
+            blocks_to_be_embedded = reshape(nonzeros_plus_padding(section,:),1,[]);
             
             num_Emb = sum(sum(blocks_to_be_embedded == -1 | blocks_to_be_embedded == 1));
-            
+
             %Embed blocks_to_be_embedded
             max_msLeng = log2(row*col);
-            si = max_msLeng + 63;
-            dcc_lsb = mod(jpgEmbCoef(1,1:si),2);
+            siz = max_msLeng + 63; % 63 bits will be used to record the ordered indexes used for embedding
+            dc_coef_lsb = mod(jpgEmbCoef(1,1:siz),2); % looking for embedding area for side information
             
-            bseed = key;
-            rand('state',bseed);
+            rand('state', 100);
             msg_org = randi([0 2^BN-1],1,msgLen);
-            msg = [dcc_lsb msg_org];
+            msg = [dc_coef_lsb msg_org];
             tot_msgLen = length(msg);
             counter = 0; siz = size(blocks_to_be_embedded,2);
             for e = 1:siz
-                if counter >= tot_msgLen break, end
+                if counter >= tot_msgLen, break, end
                 if blocks_to_be_embedded(e) > 1
                     blocks_to_be_embedded(e) = blocks_to_be_embedded(e) + (2^BN-1);
                 elseif blocks_to_be_embedded(e) < -1
@@ -163,7 +202,7 @@ org_filesize = zeros(ListLenCover,50);
         
         dcc = jpgEmbCoef(1,:);
         dcc_mod = dcc;
-        for s = 1:length(side_info);
+        for s = 1:length(side_info)
                dcc_lsb(1,s) = mod(dcc_mod(s),2);
            if mod(dcc_mod(s),2) ~= side_info(s)
                dcc_mod(s) = dcc_mod(s) + 1;
@@ -174,15 +213,17 @@ org_filesize = zeros(ListLenCover,50);
         
         %%% local decode
         block_final_mod = reshape(block_final_save,min_index,[]);
+        ac_coef_block_sorted_mod = ac_coef_block_sorted;
         for i1 = 1:length(position)
-            block = find(S_sorted(position(i1),:) ~= 0);
-            S_sorted(position(i1),block) = block_final_mod(i1,1:length(block));
+            block = find(ac_coef_block_sorted_mod(position(i1),:) ~= 0);
+            ac_coef_block_sorted_mod(position(i1),block) = block_final_mod(i1,1:length(block));
         end
-        S(:,VG_sort_ind) = S_sorted;
         
+        ac_coef_mod = zeros(size(ac_coef));
+        ac_coef_mod(:,block_sorting_ind) = ac_coef_block_sorted_mod;
 
         stegoVecCoef = jpgVecCoef;
-        stegoVecCoef(jpegOrder(2:64),:) = S;
+        stegoVecCoef(jpegOrder(2:64),:) = ac_coef_mod;
         stegoVecCoef(1,:) = dcc_mod;
         stegoCoef = vec2im(stegoVecCoef,0, 8, row/8, col/8);
         
@@ -207,11 +248,10 @@ org_filesize = zeros(ListLenCover,50);
         
         %% %%%%%%%%%% decoder %%%%%%%%%%%%%
         
-%         fish_RDH_JPEG_Decoder(msg_org)
+       fisseha_RDH_JPEG_Decoder(msg_org) 
 
     end
 
  end
 save result_original_filesize org_filesize
 save result_fish_HS_final result_fish_HS_PSNR result_fish_HS_filesize
-
