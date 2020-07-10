@@ -1,15 +1,19 @@
 % written by FIsseha Teju
-% this is an Experimental prove to the paper named :
-% Reversible data hiding on JPEG images based on new coefficients selection strategy.
+% this is Experimental prove for the paper nameed "Reversible data hiding on JPEG images based on new coefficients selection strategy"
 
 clear
-% coverJPEG = 'lena70.jpg';  BN = 1;  msgLen = floor(40000/BN);  stegoJPEG = 'fishRDH.jpg';  key = 100;  QF = 70; a = 1;
+coverJPEG = 'lena70.jpg';  BN = 1;  msgLen = floor(40000/BN);  stegoJPEG = 'fishRDH.jpg';  key = 100;  QF = 70; a = 1;
 
-jpegOrder = [ 1 9 2 3 10 17 25 18   11 4 5 12 19 26 33 41   34 27 20 13 6 7 14 21   28 35 42 49 57 50 43 36,...
-              29 22 15 8 16 23 30 37   44 51 58 59 52 45 38 31   24 32 39 46 53 60 61 54    47 40 48 55 62 63 56 64];
+jpegOrder = [ 1 9 2 3 10 17 25 18,...   
+        11 4 5 12 19 26 33 41,...
+        34 27 20 13 6 7 14 21,...   
+        28 35 42 49 57 50 43 36,...
+        29 22 15 8 16 23 30 37,...   
+        44 51 58 59 52 45 38 31,...   
+        24 32 39 46 53 60 61 54,...    
+        47 40 48 55 62 63 56 64];
 
-% you may need to change this path based on where the cover images are located.
-InDir = 'D:\Documents\IH\RDH-JPEG EURASIP\images\'; 
+InDir = '.\images\';  % Cover image location: makes sure it is created having JPEG images inside
 JpgFileList=dir([InDir, '*.jpg']);
 ListLenCover = length(JpgFileList);
 
@@ -34,6 +38,7 @@ org_filesize = zeros(ListLenCover,50);
     end
 
     a = 1;
+    EC = 10;
     for L = 10000:1000:EC*1000
         
         jpgObj = jpeg_read(coverJPEG);                                           %read the coefficients of JPEG image
@@ -73,48 +78,11 @@ org_filesize = zeros(ListLenCover,50);
             ED_metric_cumsum_final(i,:)=ED_metric_cumsum_embedding(i,:)./ED_metric_cumsum_distortion(i,:);
         end
         
-        % %         [sorted_ED_metric index_2]=sortrows(ED_metric,2);
-        % ED_metric_cumsum_embedding=ED_metric_cumsum_embedding(index_2,:);
-        % ED_metric_cumsum_distortion=ED_metric_cumsum_distortion(index_2,:);
-        % ED_metric_cumsum_final=ED_metric_cumsum_final(index_2,:);
-        
         mean_ED_metric_cumsum_final=mean(ED_metric_cumsum_final')';
         [sorted_mean_ED_metric_cumsum_final ind]=sortrows(mean_ED_metric_cumsum_final,-1);
         temp_variable=[sorted_mean_ED_metric_cumsum_final ED_metric_cumsum_embedding(ind,end) quantize_table_reshape(ind+1)'  ind];
         %%
-        
-        % %         temp_variable2=[sorted_ED_metric index_2];
-        % %         [val row_ind] = max(sorted_ED_metric(:,4));
-        %
-          %%     histogram drawing
-%          forhist = reshape(S_sorted,1,[]);
-%          tot_nonzeros_posision = find(forhist ~= 0);
-%          tot_nonzeros = S_sorted(tot_nonzeros_posision);
-%          tot_nonzeros = tot_nonzeros(1:L);
-%          figure, hold on
-%          subplot(1,2,1),xlabel('(a)'),title('Total nonzero AC histogram')
-%          hist(tot_nonzeros,min(tot_nonzeros):max(tot_nonzeros))
-%                 hold on
-%          forhist1 = S_sorted(1:5,:);      
-%          forhist = reshape(forhist1,1,[]);
-%          tot_nonzeros_posision = find(forhist ~= 0);
-%          tot_nonzeros = forhist(tot_nonzeros_posision);
-%          figure, hold on
-%          subplot(1,2,1),xlabel('(a)'),title('Total nonzero AC histogram')
-%          hist(tot_nonzeros,min(tot_nonzeros):max(tot_nonzeros))
-%                 hold on
-%                 
-%         S_S_sorted=S_sorted(ind,:); 
-%         selected = S_S_sorted(1:5,:);
-%         selected_resh = reshape(selected,1,[]);
-%         s_nz = find(selected_resh ~= 0);
-%         selected_nonzeros = selected_resh(s_nz);
-%         subplot(1,2,2),xlabel('(b)'),title('Selected nonzero ACs histogram')
-%         hist(selected_nonzeros,min(selected_nonzeros):max(selected_nonzeros))
-% %         keyboard
- 
-        % % % %   %%
-        
+              
         %%  %%%%%%%%%%%%%% section selection and embedding %%%%%%%%%%%%%%%%%%%
         %         counter=0;
         for d = 1:63
@@ -158,9 +126,8 @@ org_filesize = zeros(ListLenCover,50);
                     blocks_to_be_embedded(e) = blocks_to_be_embedded(e) - msg(counter);
                 end
             end
-            %distortion: abs difference of the blocks_to_be_embedded and original .* Quantized_steps
-            %                 distortion(d)=quantize_table_reshape(ind(1:d)+1).^2*sum(reshape(abs(blocks_to_be_embedded_original- blocks_to_be_embedded),d,[]),2);  %original code
-            distortion(d)=sum(quantize_table_reshape(ind(1:d)+1).^2*reshape(abs(blocks_to_be_embedded_original- blocks_to_be_embedded),d,[]),2);  % modified code
+           
+           distortion(d)=sum(quantize_table_reshape(ind(1:d)+1).^2*reshape(abs(blocks_to_be_embedded_original- blocks_to_be_embedded),d,[]),2);  % modified code
             %Flag for if all the payload has been embedded
             if num_Emb < tot_msgLen
                 flag(d) = 0;
@@ -205,21 +172,6 @@ org_filesize = zeros(ListLenCover,50);
         
         %%
         
-        % % % %         %% distortion plotting
-        % % % %          shift=(block_final(position(1:end),:)>1|block_final(position(1:end),:)<-1);
-        % % % %          emb=(block_final(position(1:end),:)==1|block_final(position(1:end),:)==-1);
-        % % % %          emb_cumsum=cumsum(reshape(emb,1,[]));
-        % % % %          shift_cumsum=cumsum(reshape(shift,1,[]));
-        % % % %          figure(1);
-        % % % %         hold on
-        % % % %         plot(emb_cumsum,'r')
-        % % % %         plot(shift_cumsum,'b')
-        % % % %         %%
-        % % % %         Embedable DCT(-1,1),Shiftable DCT(<-1,>1)
-        % % % %         title, Distortion checker for Payload = 10000 Bits
-        % % % %         xlable, Total Indexs used = 14
-        % % % %         ylabel, Nonzero DCT Coef.
-        
         %%% local decode
         block_final_mod = reshape(block_final_save,min_index,[]);
         for i1 = 1:length(position)
@@ -255,11 +207,6 @@ org_filesize = zeros(ListLenCover,50);
         
         %% %%%%%%%%%% decoder %%%%%%%%%%%%%
 %         fish_RDH_JPEG_Decoder(msg_org)
-        %%
-    end
-    % end
-    % res_fish_HS70 = (['res_fish_HS70', num2str(QF)]);
-%         save res_fish_HS_sideinfo_70_F16 fish_HS_PSNR fish_HS_filesize
 
  end
 save result_original_filesize org_filesize
